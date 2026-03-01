@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Айзек ви лав ю</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+    }
+    .card {
+      width: 100%;
+      max-width: 400px;
+      padding: 24px 24px 20px;
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.9);
+      box-shadow:
+        0 24px 80px rgba(15, 23, 42, 0.9),
+        0 0 0 1px rgba(148, 163, 184, 0.15);
+      backdrop-filter: blur(18px);
+    }
+    .card-header {
+      margin-bottom: 18px;
+    }
+    .title {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .form-group {
+      margin-bottom: 14px;
+    }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      margin-bottom: 6px;
+      color: #9ca3af;
+    }
+    input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #4b5563;
+      background: #020617;
+      color: #e5e7eb;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.7);
+      background: #020617;
+    }
+    button {
+      width: 100%;
+      margin-top: 4px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 500;
+      background: #0369a1;
+      color: #e5e7eb;
+      transition: background-color 0.12s ease;
+    }
+    button:hover {
+      background: #7dd3fc;
+    }
+    button:active {
+      background: #38bdf8;
+    }
+    #register-btn {
+      margin-top: 10px;
+    }
+    .status {
+      margin-top: 14px;
+      font-size: 0.85rem;
+      color: #9ca3af;
+      min-height: 18px;
+    }
+    .status.error {
+      color: #fca5a5;
+    }
+    .status.ok {
+      color: #bbf7d0;
+    }
+    .face {
+      margin-top: 16px;
+      font-size: 3.2rem;
+      text-align: center;
+      text-shadow: 0 0 26px rgba(244, 114, 182, 0.65);
+    }
+    .face img {
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+      height: auto;
+      border-radius: 14px;
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.9);
+      object-fit: contain;
+    }
+    .role {
+      margin-top: 6px;
+      text-align: center;
+      font-size: 0.85rem;
+      color: #9ca3af;
+    }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+    .modal {
+      width: 100%;
+      max-width: 380px;
+      padding: 20px 20px 18px;
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.98);
+      box-shadow:
+        0 24px 80px rgba(15, 23, 42, 0.9),
+        0 0 0 1px rgba(148, 163, 184, 0.25);
+    }
+    .modal-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .modal-actions {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+    }
+    .modal-actions button {
+      flex: 1;
+    }
+    #register-btn {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="card-header">
+      <div class="title">Вход на сайт</div>
+    </div>
+
+    <div class="form-group">
+      <label for="username">Логин</label>
+      <input id="username" autocomplete="off" />
+    </div>
+
+    <div class="form-group">
+      <label for="password">Пароль</label>
+      <input id="password" type="password" />
+    </div>
+
+    <button id="login-btn">Войти</button>
+    <button id="register-btn">Зарегистрироваться</button>
+
+    <div id="status" class="status"></div>
+    <div id="face" class="face" style="display:none"></div>
+    <div id="role" class="role" style="display:none"></div>
+  </div>
+
+  <div id="register-modal" class="modal-backdrop" style="display:none">
+    <div class="modal">
+      <div class="modal-title">Регистрация</div>
+
+      <div class="form-group">
+        <label for="reg-username">Логин</label>
+        <input id="reg-username" autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label for="reg-password">Пароль</label>
+        <input id="reg-password" type="password" />
+      </div>
+
+      <div class="form-group">
+        <label for="reg-password2">Повторите пароль</label>
+        <input id="reg-password2" type="password" />
+      </div>
+
+      <div id="register-status" class="status"></div>
+
+      <div class="modal-actions">
+        <button id="register-confirm-btn">Создать</button>
+        <button id="register-cancel-btn">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Простая "база" пользователей (пока в браузере)
+    const BASE_USERS = {
+      user:   { password: "123", role: "user",      face: ":P", label: "Пользователь" },
+      mod:    { password: "123", role: "moderator", face: ":)", label: "Модератор" },
+      admin:  { password: "123", role: "admin",     face: ":3", label: "Админ" }
+    };
+
+    const STORAGE_KEY = "demo_login_users";
+
+    function loadUsers() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { ...BASE_USERS };
+        const parsed = JSON.parse(raw);
+        return { ...BASE_USERS, ...parsed };
+      } catch {
+        return { ...BASE_USERS };
+      }
+    }
+
+    function saveUsers(extraUsers) {
+      // сохраняем только добавленных, базовые захардкожены в коде
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(extraUsers));
+    }
+
+    // usersAll – то, с чем реально работаем
+    let users = loadUsers();
+
+    const ERROR_IMAGE_SRC = "file:///C:/Users/User/.cursor/projects/c-Users-User-Desktop-damn-project/assets/c__Users_User_AppData_Roaming_Cursor_User_workspaceStorage_73f85dc75334e9975c3436c20ffa2acb_images_image-d0f76a44-989d-4401-93d2-166d2207a9d6.png";
+
+    const usernameInput       = document.getElementById("username");
+    const passwordInput       = document.getElementById("password");
+    const loginBtn            = document.getElementById("login-btn");
+    const registerBtn         = document.getElementById("register-btn");
+    const statusEl            = document.getElementById("status");
+    const faceEl              = document.getElementById("face");
+    const roleEl              = document.getElementById("role");
+
+    const registerModal       = document.getElementById("register-modal");
+    const regUsernameInput    = document.getElementById("reg-username");
+    const regPasswordInput    = document.getElementById("reg-password");
+    const regPassword2Input   = document.getElementById("reg-password2");
+    const registerStatusEl    = document.getElementById("register-status");
+    const registerConfirmBtn  = document.getElementById("register-confirm-btn");
+    const registerCancelBtn   = document.getElementById("register-cancel-btn");
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.classList.toggle("error", isError);
+      statusEl.classList.toggle("ok", !isError && message);
+    }
+
+    function showFace(info) {
+      faceEl.style.display = "block";
+      roleEl.style.display = "block";
+      faceEl.textContent = info.face;
+      roleEl.textContent = info.label + " (" + info.role + ")";
+    }
+
+    function showErrorImage() {
+      faceEl.style.display = "block";
+      roleEl.style.display = "none";
+      faceEl.innerHTML = '<img src="' + ERROR_IMAGE_SRC + '" alt="Ошибка входа" />';
+    }
+
+    function hideFace() {
+      faceEl.style.display = "none";
+      roleEl.style.display = "none";
+      faceEl.textContent = "";
+    }
+
+    function setRegisterStatus(message, isError = false) {
+      registerStatusEl.textContent = message;
+      registerStatusEl.classList.toggle("error", isError);
+      registerStatusEl.classList.toggle("ok", !isError && message);
+    }
+
+    function openRegisterModal() {
+      regUsernameInput.value = "";
+      regPasswordInput.value = "";
+      regPassword2Input.value = "";
+      setRegisterStatus("");
+      registerModal.style.display = "flex";
+      regUsernameInput.focus();
+    }
+
+    function closeRegisterModal() {
+      registerModal.style.display = "none";
+    }
+
+    loginBtn.addEventListener("click", () => {
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value;
+
+      const user = users[username];
+
+      if (!user || password !== user.password) {
+        setStatus("Неверный логин или пароль", true);
+        showErrorImage();
+        return;
+      }
+
+      setStatus("Успешный вход", false);
+      showFace(user);
+    });
+
+    registerBtn.addEventListener("click", () => {
+      hideFace();
+      setStatus("");
+      openRegisterModal();
+    });
+
+    registerConfirmBtn.addEventListener("click", () => {
+      const username = regUsernameInput.value.trim();
+      const password = regPasswordInput.value;
+      const password2 = regPassword2Input.value;
+
+      if (!username || !password) {
+        setRegisterStatus("Введите логин и пароль", true);
+        return;
+      }
+
+      if (password !== password2) {
+        setRegisterStatus("Пароли не совпадают", true);
+        return;
+      }
+
+      if (users[username]) {
+        setRegisterStatus("Такой логин уже занят", true);
+        return;
+      }
+
+      const newUser = {
+        password,
+        role: "user",
+        face: ":P",
+        label: "Пользователь"
+      };
+
+      users[username] = newUser;
+
+      // сохраняем только пользовательские аккаунты без базовых
+      const extraUsers = { ...users };
+      Object.keys(BASE_USERS).forEach((key) => delete extraUsers[key]);
+      saveUsers(extraUsers);
+
+      setRegisterStatus("Регистрация успешна. Теперь можно войти.", false);
+      setTimeout(() => {
+        closeRegisterModal();
+        usernameInput.value = username;
+        passwordInput.value = "";
+        setStatus("Аккаунт создан. Введите пароль и войдите.", false);
+      }, 700);
+    });
+
+    registerCancelBtn.addEventListener("click", () => {
+      closeRegisterModal();
+    });
+
+    // Нажатие Enter в любом поле = нажать кнопку
+    [usernameInput, passwordInput].forEach((input) => {
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          loginBtn.click();
+        }
+      });
+    });
+
+    [regUsernameInput, regPasswordInput, regPassword2Input].forEach((input) => {
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          registerConfirmBtn.click();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
