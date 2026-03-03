@@ -80,7 +80,7 @@
     button:active {
       background: #38bdf8;
     }
-    #register-btn {
+    .register-btn {
       margin-top: 10px;
     }
     .status {
@@ -116,6 +116,62 @@
       font-size: 0.85rem;
       color: #9ca3af;
     }
+    .search-page {
+      display: none;
+      width: 100%;
+      max-width: 600px;
+      padding: 32px 28px 28px;
+      border-radius: 18px;
+      background: rgba(15, 23, 42, 0.9);
+      box-shadow:
+        0 24px 80px rgba(15, 23, 42, 0.9),
+        0 0 0 1px rgba(148, 163, 184, 0.15);
+    }
+    .logout-btn {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      width: auto;
+      padding-inline: 16px;
+      font-size: 0.85rem;
+    }
+    .search-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 18px;
+    }
+    .search-box {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .search-box input {
+      flex: 1;
+    }
+    .search-box button {
+      width: auto;
+      padding-inline: 18px;
+    }
+    .search-results {
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      font-size: 0.9rem;
+    }
+    .search-card {
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+    }
+    .search-card-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .search-card-sub {
+      color: #9ca3af;
+    }
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -148,9 +204,6 @@
     .modal-actions button {
       flex: 1;
     }
-    #register-btn {
-      margin-top: 10px;
-    }
   </style>
 </head>
 <body>
@@ -170,11 +223,24 @@
     </div>
 
     <button id="login-btn">Войти</button>
-    <button id="register-btn">Зарегистрироваться</button>
+    <button id="register-user-btn" class="register-btn">Регистрация (как пользователь)</button>
+    <button id="register-worker-btn" class="register-btn">Регистрация (как специалист)</button>
 
     <div id="status" class="status"></div>
     <div id="face" class="face" style="display:none"></div>
     <div id="role" class="role" style="display:none"></div>
+  </div>
+
+  <div id="search-page" class="search-page">
+    <div class="search-title">Поиск</div>
+    <div class="form-group">
+      <label for="search-input">Что ищем?</label>
+      <div class="search-box">
+        <input id="search-input" autocomplete="off" placeholder="Например: математика или смартфоны" />
+        <button id="search-btn">Искать</button>
+      </div>
+    </div>
+    <div id="search-results" class="search-results"></div>
   </div>
 
   <div id="register-modal" class="modal-backdrop" style="display:none">
@@ -187,6 +253,16 @@
       </div>
 
       <div class="form-group">
+        <label for="reg-name">Имя</label>
+        <input id="reg-name" autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label for="reg-patronymic">Отчество (необязательно)</label>
+        <input id="reg-patronymic" autocomplete="off" />
+      </div>
+
+      <div class="form-group">
         <label for="reg-password">Пароль</label>
         <input id="reg-password" type="password" />
       </div>
@@ -194,6 +270,23 @@
       <div class="form-group">
         <label for="reg-password2">Повторите пароль</label>
         <input id="reg-password2" type="password" />
+      </div>
+
+      <div id="worker-extra" style="display:none">
+        <div class="form-group">
+          <label for="worker-kind">Тип специалиста</label>
+          <select id="worker-kind">
+            <option value="tutor">Репетитор</option>
+            <option value="master">Мастер по ремонту</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="worker-specialty">Узкая специализация</label>
+          <select id="worker-specialty">
+            <!-- варианты подставляются скриптом -->
+          </select>
+        </div>
       </div>
 
       <div id="register-status" class="status"></div>
@@ -208,9 +301,26 @@
   <script>
     // Простая "база" пользователей (пока в браузере)
     const BASE_USERS = {
-      user:   { password: "123", role: "user",      face: ":P", label: "Пользователь" },
-      mod:    { password: "123", role: "moderator", face: ":)", label: "Модератор" },
-      admin:  { password: "123", role: "admin",     face: ":3", label: "Админ" }
+      user:    { password: "123", role: "user",      face: ":P", label: "Пользователь", name: "Иван", patronymic: "Иванович" },
+      mod:     { password: "123", role: "moderator", face: ":)", label: "Модератор",    name: "Мария", patronymic: "Петровна" },
+      admin:   { password: "123", role: "admin",     face: ":3", label: "Админ",        name: "Админ", patronymic: "" },
+
+      worker1:  { password: "123", role: "worker", face: ":D", label: "Воркер", name: "Алексей",   patronymic: "Сергеевич",   kind: "tutor",  specialty: "Математика" },
+      worker2:  { password: "123", role: "worker", face: ":D", label: "Воркер", name: "Марина",    patronymic: "Игоревна",    kind: "tutor",  specialty: "Русский язык" },
+      worker3:  { password: "123", role: "worker", face: ":D", label: "Воркер", name: "Дмитрий",   patronymic: "Андреевич",   kind: "tutor",  specialty: "Английский язык" },
+      worker4:  { password: "123", role: "worker", face: ":D", label: "Воркер", name: "Ольга",     patronymic: "Викторовна",  kind: "tutor",  specialty: "Информатика" },
+      worker5:  { password: "123", role: "worker", face: ":D", label: "Воркер", name: "Сергей",    patronymic: "Николаевич",  kind: "tutor",  specialty: "Математика" },
+
+      worker6:  { password: "123", role: "worker", face: ":D", label: "Воркер", name: "Антон",     patronymic: "Павлович",    kind: "master", specialty: "Смартфоны" },
+      worker7:  { password: "123", role: "worker", face: ":D", label: "Воркер", name: "Екатерина", patronymic: "Сергеевна",  kind: "master", specialty: "Ноутбуки" },
+      worker8:  { password: "123", role: "worker", face: ":D", label: "Воркер", name: "Никита",    patronymic: "Алексеевич",  kind: "master", specialty: "Бытовая техника" },
+      worker9:  { password: "123", role: "worker", face: ":D", label: "Воркер", name: "Ирина",     patronymic: "Михайловна",  kind: "master", specialty: "Электрика" },
+      worker10: { password: "123", role: "worker", face: ":D", label: "Воркер", name: "Павел",     patronymic: "Романович",   kind: "master", specialty: "Смартфоны" },
+      worker11: { password: "123", role: "worker", face: ":D", label: "Воркер", name: "Татьяна",   patronymic: "Юрьевна",     kind: "tutor",  specialty: "Русский язык" },
+      worker12: { password: "123", role: "worker", face: ":D", label: "Воркер", name: "Константин",patronymic: "Олегович",    kind: "tutor",  specialty: "Информатика" },
+      worker13: { password: "123", role: "worker", face: ":D", label: "Воркер", name: "Алина",     patronymic: "Максимовна",  kind: "master", specialty: "Ноутбуки" },
+      worker14: { password: "123", role: "worker", face: ":D", label: "Воркер", name: "Руслан",    patronymic: "Ильич",       kind: "master", specialty: "Бытовая техника" },
+      worker15: { password: "123", role: "worker", face: ":D", label: "Воркер", name: "Юлия",      patronymic: "Александровна",kind: "tutor", specialty: "Английский язык" }
     };
 
     const STORAGE_KEY = "demo_login_users";
@@ -236,21 +346,58 @@
 
     const ERROR_IMAGE_SRC = "kanami.png";
 
-    const usernameInput       = document.getElementById("username");
-    const passwordInput       = document.getElementById("password");
-    const loginBtn            = document.getElementById("login-btn");
-    const registerBtn         = document.getElementById("register-btn");
-    const statusEl            = document.getElementById("status");
-    const faceEl              = document.getElementById("face");
-    const roleEl              = document.getElementById("role");
+    const usernameInput        = document.getElementById("username");
+    const passwordInput        = document.getElementById("password");
+    const loginBtn             = document.getElementById("login-btn");
+    const registerUserBtn      = document.getElementById("register-user-btn");
+    const registerWorkerBtn    = document.getElementById("register-worker-btn");
+    const statusEl             = document.getElementById("status");
+    const faceEl               = document.getElementById("face");
+    const roleEl               = document.getElementById("role");
 
-    const registerModal       = document.getElementById("register-modal");
-    const regUsernameInput    = document.getElementById("reg-username");
-    const regPasswordInput    = document.getElementById("reg-password");
-    const regPassword2Input   = document.getElementById("reg-password2");
-    const registerStatusEl    = document.getElementById("register-status");
-    const registerConfirmBtn  = document.getElementById("register-confirm-btn");
-    const registerCancelBtn   = document.getElementById("register-cancel-btn");
+    const cardEl               = document.querySelector(".card");
+    const searchPageEl         = document.getElementById("search-page");
+    const searchInput          = document.getElementById("search-input");
+    const searchBtn            = document.getElementById("search-btn");
+    const searchResultsEl      = document.getElementById("search-results");
+
+    let logoutBtn = null;
+
+    const registerModal        = document.getElementById("register-modal");
+    const regUsernameInput     = document.getElementById("reg-username");
+    const regNameInput         = document.getElementById("reg-name");
+    const regPatronymicInput   = document.getElementById("reg-patronymic");
+    const regPasswordInput     = document.getElementById("reg-password");
+    const regPassword2Input    = document.getElementById("reg-password2");
+    const registerStatusEl     = document.getElementById("register-status");
+    const registerConfirmBtn   = document.getElementById("register-confirm-btn");
+    const registerCancelBtn    = document.getElementById("register-cancel-btn");
+    const registerModalTitleEl = document.querySelector("#register-modal .modal-title");
+    const workerExtraEl        = document.getElementById("worker-extra");
+    const workerKindSelect     = document.getElementById("worker-kind");
+    const workerSpecialtySelect= document.getElementById("worker-specialty");
+
+    let currentRegisterRole = "user";
+
+    const WORKER_SPECIALTIES = {
+      tutor: [
+        "Русский язык",
+        "Английский язык",
+        "Математика",
+        "Информатика"
+      ],
+      master: [
+        "Смартфоны",
+        "Ноутбуки",
+        "Бытовая техника",
+        "Электрика"
+      ]
+    };
+
+    const KIND_LABELS = {
+      tutor: "Репетитор",
+      master: "Мастер по ремонту"
+    };
 
     function setStatus(message, isError = false) {
       statusEl.textContent = message;
@@ -283,11 +430,75 @@
       registerStatusEl.classList.toggle("ok", !isError && message);
     }
 
-    function openRegisterModal() {
+    function fillWorkerSpecialties(kind) {
+      const list = WORKER_SPECIALTIES[kind] || [];
+      workerSpecialtySelect.innerHTML = "";
+      list.forEach((name) => {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        workerSpecialtySelect.appendChild(opt);
+      });
+    }
+
+    function showSearchPage(user) {
+      cardEl.style.display = "none";
+      searchPageEl.style.display = "block";
+
+      if (!logoutBtn) {
+        logoutBtn = document.createElement("button");
+        logoutBtn.textContent = "Выйти из аккаунта";
+        logoutBtn.className = "logout-btn";
+        document.body.appendChild(logoutBtn);
+
+        logoutBtn.addEventListener("click", () => {
+          // "Выход" — просто возвращаемся на экран входа
+          searchPageEl.style.display = "none";
+          cardEl.style.display = "block";
+          setStatus("");
+          passwordInput.value = "";
+          localStorage.removeItem("current_user");
+          if (logoutBtn) {
+            logoutBtn.style.display = "none";
+          }
+        });
+      }
+
+      logoutBtn.style.display = "block";
+    }
+
+    // Автовход для user при перезагрузке страницы
+    (function restoreSession() {
+      const savedUsername = localStorage.getItem("current_user");
+      if (!savedUsername) return;
+
+      const savedUser = users[savedUsername];
+      if (!savedUser || savedUser.role !== "user") return;
+
+      usernameInput.value = savedUsername;
+      showSearchPage(savedUser);
+      setStatus("");
+    })();
+
+    function openRegisterModal(role) {
+      currentRegisterRole = role === "worker" ? "worker" : "user";
       regUsernameInput.value = "";
+      regNameInput.value = "";
+      regPatronymicInput.value = "";
       regPasswordInput.value = "";
       regPassword2Input.value = "";
       setRegisterStatus("");
+      registerModalTitleEl.textContent =
+        currentRegisterRole === "worker" ? "Регистрация worker" : "Регистрация user";
+
+      if (currentRegisterRole === "worker") {
+        workerExtraEl.style.display = "block";
+        workerKindSelect.value = "tutor";
+        fillWorkerSpecialties("tutor");
+      } else {
+        workerExtraEl.style.display = "none";
+      }
+
       registerModal.style.display = "flex";
       regUsernameInput.focus();
     }
@@ -309,22 +520,36 @@
       }
 
       setStatus("Успешный вход", false);
-      showFace(user);
+
+      if (user.role === "user") {
+        localStorage.setItem("current_user", username);
+        showSearchPage(user);
+      } else {
+        showFace(user);
+      }
     });
 
-    registerBtn.addEventListener("click", () => {
+    registerUserBtn.addEventListener("click", () => {
       hideFace();
       setStatus("");
-      openRegisterModal();
+      openRegisterModal("user");
+    });
+
+    registerWorkerBtn.addEventListener("click", () => {
+      hideFace();
+      setStatus("");
+      openRegisterModal("worker");
     });
 
     registerConfirmBtn.addEventListener("click", () => {
       const username = regUsernameInput.value.trim();
+      const name = regNameInput.value.trim();
+      const patronymic = regPatronymicInput.value.trim();
       const password = regPasswordInput.value;
       const password2 = regPassword2Input.value;
 
-      if (!username || !password) {
-        setRegisterStatus("Введите логин и пароль", true);
+      if (!username || !password || !name) {
+        setRegisterStatus("Введите логин, имя и пароль", true);
         return;
       }
 
@@ -338,12 +563,26 @@
         return;
       }
 
-      const newUser = {
-        password,
-        role: "user",
-        face: ":P",
-        label: "Пользователь"
-      };
+      const newUser =
+        currentRegisterRole === "worker"
+          ? {
+              password,
+              role: "worker",
+              face: ":D",
+              label: "Воркер",
+              name,
+              patronymic,
+              kind: workerKindSelect.value,
+              specialty: workerSpecialtySelect.value
+            }
+          : {
+              password,
+              role: "user",
+              face: ":P",
+              label: "Пользователь",
+              name,
+              patronymic
+            };
 
       users[username] = newUser;
 
@@ -374,14 +613,63 @@
       });
     });
 
-    [regUsernameInput, regPasswordInput, regPassword2Input].forEach((input) => {
+    [regUsernameInput, regNameInput, regPatronymicInput, regPasswordInput, regPassword2Input].forEach((input) => {
       input.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           registerConfirmBtn.click();
         }
       });
     });
+
+    workerKindSelect.addEventListener("change", () => {
+      fillWorkerSpecialties(workerKindSelect.value);
+    });
+
+    function performSearch() {
+      const query = searchInput.value.trim().toLowerCase();
+      searchResultsEl.innerHTML = "";
+
+      const workers = Object.values(users).filter((u) => u.role === "worker");
+      const filtered = workers.filter((w) => {
+        if (!w.specialty) return false;
+        if (!query) return true;
+        return w.specialty.toLowerCase().includes(query);
+      });
+
+      if (filtered.length === 0) {
+        const empty = document.createElement("div");
+        empty.textContent = "Ничего не найдено";
+        searchResultsEl.appendChild(empty);
+        return;
+      }
+
+      filtered.forEach((w) => {
+        const card = document.createElement("div");
+        card.className = "search-card";
+
+        const fullName = w.patronymic ? `${w.name} ${w.patronymic}` : (w.name || "Без имени");
+
+        const title = document.createElement("div");
+        title.className = "search-card-title";
+        title.textContent = fullName;
+
+        const sub = document.createElement("div");
+        sub.className = "search-card-sub";
+        const kindLabel = KIND_LABELS[w.kind] || "Специалист";
+        sub.textContent = `${kindLabel} — ${w.specialty}`;
+
+        card.appendChild(title);
+        card.appendChild(sub);
+        searchResultsEl.appendChild(card);
+      });
+    }
+
+    searchBtn.addEventListener("click", performSearch);
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        performSearch();
+      }
+    });
   </script>
 </body>
 </html>
-
