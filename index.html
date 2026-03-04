@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Айзек ви лав ю</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="card">
+    <div class="card-header">
+      <div class="title">Вход на сайт</div>
+    </div>
+
+    <div class="form-group">
+      <label for="username">Логин</label>
+      <input id="username" autocomplete="off" />
+    </div>
+
+    <div class="form-group">
+      <label for="password">Пароль</label>
+      <input id="password" type="password" />
+    </div>
+
+    <button id="login-btn">Войти</button>
+    <button id="register-user-btn" class="register-btn">Регистрация (как пользователь)</button>
+    <button id="register-worker-btn" class="register-btn">Регистрация (как специалист)</button>
+
+    <div id="status" class="status"></div>
+    <div id="face" class="face" style="display:none"></div>
+    <div id="role" class="role" style="display:none"></div>
+  </div>
+
+  <div id="search-page" class="search-page">
+    <div class="search-title">Поиск</div>
+    <div class="form-group">
+      <label for="search-input">Что ищем?</label>
+      <div class="search-box">
+        <input id="search-input" autocomplete="off" placeholder="Например: математика, репетитор, мастер" />
+        <button id="search-btn">Искать</button>
+      </div>
+    </div>
+    <div id="search-results" class="search-results"></div>
+  </div>
+
+  <div id="results-page" class="results-page">
+    <div class="results-page-header">
+      <div class="results-page-title">Найденные специалисты</div>
+      <button id="results-back-btn" class="results-page-back">Назад к поиску</button>
+    </div>
+    <div id="filter-row" class="filter-row">
+      <label>Тип:</label>
+      <select id="filter-kind">
+        <option value="">Все</option>
+        <option value="tutor">Репетитор</option>
+        <option value="master">Мастер по ремонту</option>
+      </select>
+      <label>Город:</label>
+      <input id="filter-city" type="text" placeholder="Город" />
+      <label>Цена от:</label>
+      <input id="filter-price-min" type="number" min="0" placeholder="0" />
+      <label>до:</label>
+      <input id="filter-price-max" type="number" min="0" placeholder="—" />
+      <div class="sort-wrap">
+        <label>Сортировка:</label>
+        <select id="sort-by">
+          <option value="rating">По рейтингу</option>
+          <option value="priceAsc">Сначала дешевле</option>
+          <option value="priceDesc">Сначала дороже</option>
+          <option value="name">По имени</option>
+        </select>
+      </div>
+    </div>
+    <div id="results-page-list" class="results-page-list"></div>
+  </div>
+
+  <div id="profile-page" class="profile-page">
+    <div class="profile-header">
+      <div>
+        <div id="profile-name" class="profile-name"></div>
+        <div id="profile-meta" class="profile-meta"></div>
+        <div id="profile-price" class="profile-price"></div>
+        <div id="profile-rating" class="rating-stars"></div>
+      </div>
+      <button id="profile-back-btn" class="results-page-back">Назад</button>
+    </div>
+    <div id="profile-about" class="profile-about"></div>
+    <div id="profile-contact" class="profile-contact"></div>
+    <h4 style="margin-top:20px">Расписание</h4>
+    <div id="profile-timetable" class="profile-timetable"></div>
+    <button id="profile-favorite-btn" class="favorite-btn">В избранное</button>
+    <h4 style="margin-top:20px">Отзывы</h4>
+    <div id="profile-reviews" class="reviews-list"></div>
+    <div id="review-form" class="review-form" style="display:none">
+      <label>Ваша оценка (1–5):</label>
+      <input id="review-rating" type="number" min="1" max="5" value="5" />
+      <textarea id="review-text" placeholder="Текст отзыва"></textarea>
+      <button id="review-submit">Отправить отзыв</button>
+    </div>
+  </div>
+
+  <div id="favorites-page" class="favorites-page">
+    <div class="results-page-header">
+      <div class="results-page-title">Избранное</div>
+      <button id="favorites-back-btn" class="results-page-back">Назад к поиску</button>
+    </div>
+    <div id="favorites-list" class="results-page-list"></div>
+  </div>
+
+  <div id="cabinet-page" class="cabinet-page">
+    <div class="results-page-header">
+      <div class="results-page-title">Мой кабинет</div>
+      <button id="cabinet-logout-btn" class="results-page-back">Выйти</button>
+    </div>
+    <div class="form-group">
+      <label>Имя</label>
+      <input id="cabinet-name" />
+    </div>
+    <div class="form-group">
+      <label>Отчество</label>
+      <input id="cabinet-patronymic" />
+    </div>
+    <div class="form-group">
+      <label>Город</label>
+      <input id="cabinet-city" />
+    </div>
+    <div id="cabinet-worker-fields" style="display:none">
+      <div class="form-group">
+        <label>Стоимость (₽)</label>
+        <input id="cabinet-price" type="number" min="0" />
+      </div>
+      <div class="form-group">
+        <label>О себе</label>
+        <textarea id="cabinet-about"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Тип</label>
+        <select id="cabinet-kind"><option value="tutor">Репетитор</option><option value="master">Мастер по ремонту</option></select>
+      </div>
+      <div class="form-group">
+        <label>Специальность</label>
+        <select id="cabinet-specialty"></select>
+      </div>
+      <div class="form-group">
+        <label>Telegram</label>
+        <input id="cabinet-telegram" autocomplete="off" placeholder="@username" />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input id="cabinet-email" type="email" autocomplete="off" />
+      </div>
+      <h4 style="margin-top:16px">Расписание по дням недели</h4>
+      <div id="cabinet-timetable" class="cabinet-timetable"></div>
+    </div>
+    <button id="cabinet-save-btn">Сохранить</button>
+    <h4 style="margin-top:20px">Отзывы обо мне</h4>
+    <div id="cabinet-reviews" class="reviews-list"></div>
+  </div>
+
+  <div id="register-modal" class="modal-backdrop" style="display:none">
+    <div class="modal">
+      <div class="modal-title">Регистрация</div>
+
+      <div class="form-group">
+        <label for="reg-username">Логин</label>
+        <input id="reg-username" autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label for="reg-name">Имя</label>
+        <input id="reg-name" autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label for="reg-patronymic">Отчество (необязательно)</label>
+        <input id="reg-patronymic" autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label for="reg-city">Город</label>
+        <input id="reg-city" autocomplete="off" placeholder="Например: Москва" />
+      </div>
+
+      <div class="form-group">
+        <label for="reg-password">Пароль</label>
+        <input id="reg-password" type="password" />
+      </div>
+
+      <div class="form-group">
+        <label for="reg-password2">Повторите пароль</label>
+        <input id="reg-password2" type="password" />
+      </div>
+
+      <div id="worker-extra" style="display:none">
+        <div class="form-group">
+          <label for="worker-kind">Тип специалиста</label>
+          <select id="worker-kind">
+            <option value="tutor">Репетитор</option>
+            <option value="master">Мастер по ремонту</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="worker-specialty">Узкая специализация</label>
+          <select id="worker-specialty">
+            <!-- варианты подставляются скриптом -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="reg-price">Стоимость (₽/час или за услугу)</label>
+          <input id="reg-price" type="number" min="0" placeholder="1500" />
+        </div>
+        <div class="form-group">
+          <label for="reg-about">О себе</label>
+          <textarea id="reg-about" placeholder="Кратко расскажите о себе и опыте"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="reg-city-worker">Город</label>
+          <input id="reg-city-worker" autocomplete="off" placeholder="Например: Москва" />
+        </div>
+        <div class="form-group">
+          <label for="reg-telegram">Telegram</label>
+          <input id="reg-telegram" autocomplete="off" placeholder="@username или ссылка" />
+        </div>
+        <div class="form-group">
+          <label for="reg-email">Email</label>
+          <input id="reg-email" type="email" autocomplete="off" placeholder="example@mail.ru" />
+        </div>
+      </div>
+
+      <div id="register-status" class="status"></div>
+
+      <div class="modal-actions">
+        <button id="register-confirm-btn">Создать</button>
+        <button id="register-cancel-btn">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
