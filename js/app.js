@@ -643,7 +643,8 @@
     if (q) {
       list = list.filter((w) => {
         const specMatch = w.specialty && w.specialty.toLowerCase().includes(q);
-        const kindMatch = (q.includes("репетитор") && w.kind === "tutor") || (q.includes("мастер") && w.kind === "master");
+        const kindLabel = (KIND_LABELS[w.kind] || "").toLowerCase();
+        const kindMatch = kindLabel && (q.includes(kindLabel) || kindLabel.includes(q));
         return specMatch || kindMatch;
       });
     }
@@ -659,7 +660,8 @@
     if (query) {
       list = list.filter((w) => {
         const specMatch = w.specialty && w.specialty.toLowerCase().includes(query);
-        const kindMatch = (query.includes("репетитор") && w.kind === "tutor") || (query.includes("мастер") && w.kind === "master");
+        const kindLabel = (KIND_LABELS[w.kind] || "").toLowerCase();
+        const kindMatch = kindLabel && (query.includes(kindLabel) || kindLabel.includes(query));
         return specMatch || kindMatch;
       });
     }
