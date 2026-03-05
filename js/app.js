@@ -858,7 +858,15 @@
       const revCount = getReviewCount(w.username);
       if (w.rating || revCount) { const r = document.createElement("div"); r.className = "card-rating"; r.textContent = (w.rating ? "★ " + w.rating : "") + (revCount ? (w.rating ? " · " : "") + revCount + " " + (revCount === 1 ? "отзыв" : revCount < 5 ? "отзыва" : "отзывов") : ""); textBlock.appendChild(r); }
       card.appendChild(textBlock);
-      card.addEventListener("click", () => { profileFromResults = false; openProfile(w.username); });
+      card.addEventListener("click", () => {
+        lastSearchQuery = searchInput.value.trim();
+        renderResultsList();
+        closeResultsDetail();
+        searchPageEl.style.display = "none";
+        resultsPageEl.style.display = "flex";
+        profileFromResults = true;
+        renderResultsDetail(w.username);
+      });
       searchResultsEl.appendChild(card);
     });
   }
