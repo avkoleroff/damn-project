@@ -165,6 +165,9 @@ button:active {
   font-size: 0.9rem;
 }
 .search-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   padding: 10px 12px;
   border-radius: 10px;
   background: rgba(15, 23, 42, 0.95);
@@ -180,15 +183,80 @@ button:active {
 .results-page {
   display: none;
   width: 100%;
-  max-width: 720px;
+  max-width: 100%;
+  flex-direction: row;
+  gap: 0;
+  align-items: stretch;
   padding: 28px 24px 24px;
   border-radius: 18px;
   background: rgba(15, 23, 42, 0.9);
   box-shadow: 0 24px 80px rgba(15, 23, 42, 0.9), 0 0 0 1px rgba(148, 163, 184, 0.15);
+  flex: 1;
+  overflow: hidden;
 }
 .results-page.visible {
-  display: block;
+  display: flex;
 }
+.results-left {
+  flex: 1;
+  min-width: 0;
+  transition: flex 0.35s ease;
+}
+.results-page.has-detail .results-left {
+  flex: 0 1 50%;
+}
+.results-detail {
+  width: 0;
+  overflow: hidden;
+  transition: width 0.35s ease;
+  display: flex;
+  flex-direction: column;
+  background: rgba(2, 6, 23, 0.5);
+  border-radius: 0 14px 14px 0;
+  position: relative;
+}
+.results-page.has-detail .results-detail {
+  width: min(420px, 50%);
+  min-width: 320px;
+  border-left: 1px solid rgba(148, 163, 184, 0.2);
+}
+.results-detail-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 1.4rem;
+  line-height: 1;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.2);
+  color: #e5e7eb;
+  cursor: pointer;
+  z-index: 2;
+  border: none;
+}
+.results-detail-close:hover {
+  background: rgba(148, 163, 184, 0.35);
+}
+.results-detail-content {
+  padding: 16px 12px 16px 16px;
+  overflow-y: auto;
+  flex: 1;
+  font-size: 0.95rem;
+}
+.results-detail-content .profile-name { font-size: 1.2rem; margin-bottom: 4px; }
+.results-detail-content .profile-meta { color: #9ca3af; margin-bottom: 8px; }
+.results-detail-content .profile-price { color: #7dd3fc; margin-bottom: 12px; }
+.results-detail-content .profile-about { margin: 12px 0; padding: 10px; border-radius: 8px; background: rgba(2,6,23,0.5); }
+.results-detail-content .profile-contact { margin-bottom: 12px; }
+.results-detail-content .timetable-week-wrap { min-width: 260px; }
+.results-detail-content .favorite-btn { width: auto; padding-inline: 12px; margin-top: 8px; }
+.results-detail-content .reviews-list { margin-top: 12px; }
+.results-detail-content .review-item { padding: 8px 0; border-bottom: 1px solid rgba(148,163,184,0.15); }
+.results-detail-content .review-form { margin-top: 12px; }
+.results-detail-content .review-form textarea { margin-bottom: 6px; }
+.results-detail-content .review-form button { width: auto; padding-inline: 14px; }
 .search-page.hidden {
   display: none;
 }
@@ -219,6 +287,22 @@ button:active {
   border: 1px solid rgba(148, 163, 184, 0.35);
   font-size: 1rem;
 }
+.results-card-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.worker-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.search-card .worker-avatar.search-card-avatar {
+  width: 40px;
+  height: 40px;
+}
 .results-card-name {
   font-size: 1.2rem;
   font-weight: 600;
@@ -228,6 +312,21 @@ button:active {
   color: #9ca3af;
   font-size: 1rem;
 }
+.profile-header-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.profile-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.avatar-edit { display: flex; align-items: center; gap: 12px; }
+.avatar-preview { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
+.avatar-edit input[type="file"] { width: auto; }
 .results-page-empty {
   text-align: center;
   color: #9ca3af;
@@ -317,13 +416,13 @@ button:active {
 .timetable-legend .dot.working { background: #22c55e; }
 .timetable-legend .dot.busy { background: #ef4444; }
 
-/* Cabinet timetable editor */
+/* Cabinet timetable editor — сетка как в профиле, клик по ячейке */
 .cabinet-timetable { margin-top: 8px; }
-.cabinet-timetable-day { margin-bottom: 14px; padding: 10px; border-radius: 10px; background: rgba(2,6,23,0.4); }
-.cabinet-timetable-day-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 8px; color: #e5e7eb; }
-.cabinet-timetable-segments { display: flex; flex-direction: column; gap: 6px; }
-.cabinet-timetable-segment-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.cabinet-timetable-segment-row input { width: 70px; min-width: 60px; }
-.cabinet-timetable-add-btn { margin-top: 6px; padding: 4px 10px; font-size: 0.8rem; width: auto; }
-.cabinet-timetable-remove-btn { padding: 4px 8px; font-size: 0.75rem; width: auto; background: #7f1d1d; }
-.cabinet-timetable-remove-btn:hover { background: #b91c1c; }
+.cabinet-timetable-grid .timetable-week-cell.cabinet-timetable-cell {
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.cabinet-timetable-grid .timetable-week-cell.cabinet-timetable-cell:hover {
+  filter: brightness(1.15);
+}
+.timetable-legend .dot:not(.working):not(.busy) { background: #6b7280; }

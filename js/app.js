@@ -121,12 +121,16 @@
   const resultsPageEl        = document.getElementById("results-page");
   const resultsPageListEl    = document.getElementById("results-page-list");
   const resultsBackBtn       = document.getElementById("results-back-btn");
+  const resultsDetailEl      = document.getElementById("results-detail");
+  const resultsDetailContentEl = document.getElementById("results-detail-content");
+  const resultsDetailCloseBtn = document.getElementById("results-detail-close");
   const filterKind           = document.getElementById("filter-kind");
   const filterCity           = document.getElementById("filter-city");
   const filterPriceMin       = document.getElementById("filter-price-min");
   const filterPriceMax       = document.getElementById("filter-price-max");
   const sortBy               = document.getElementById("sort-by");
   const profilePageEl        = document.getElementById("profile-page");
+  const profileAvatarEl      = document.getElementById("profile-avatar");
   const profileNameEl        = document.getElementById("profile-name");
   const profileMetaEl        = document.getElementById("profile-meta");
   const profilePriceEl       = document.getElementById("profile-price");
@@ -154,9 +158,12 @@
   const cabinetSpecialtySelect = document.getElementById("cabinet-specialty");
   const cabinetTelegramInput = document.getElementById("cabinet-telegram");
   const cabinetEmailInput   = document.getElementById("cabinet-email");
+  const cabinetAvatarPreview = document.getElementById("cabinet-avatar-preview");
+  const cabinetAvatarInput  = document.getElementById("cabinet-avatar-input");
   const cabinetSaveBtn      = document.getElementById("cabinet-save-btn");
   const cabinetReviewsEl    = document.getElementById("cabinet-reviews");
   const cabinetLogoutBtn    = document.getElementById("cabinet-logout-btn");
+  let cabinetAvatarDataUrl  = null;
 
   let topNavEl = null;
   let currentProfileUsername = null;
@@ -197,7 +204,12 @@
     const raw = localStorage.getItem(STORAGE_REVIEWS);
     const all = raw ? JSON.parse(raw) : {};
     if (!all[workerUsername]) all[workerUsername] = [];
-    all[workerUsername].push({ author: currentUserUsername || "Гость", rating: review.rating, text: getReviewLabel(review.rating), date: new Date().toISOString().slice(0, 10) });
+    const authorUsername = currentUserUsername || "";
+    const authorName = authorUsername && users[authorUsername] ? (users[authorUsername].name || authorUsername) : "Гость";
+    const text = (review.text && String(review.text).trim()) ? String(review.text).trim() : getReviewLabel(review.rating);
+    const newReview = { authorUsername, author: authorName, rating: review.rating, text: text, date: new Date().toISOString().slice(0, 10) };
+    all[workerUsername] = all[workerUsername].filter((r) => r.authorUsername !== authorUsername);
+    all[workerUsername].push(newReview);
     localStorage.setItem(STORAGE_REVIEWS, JSON.stringify(all));
   }
   function getAverageRating(workerUsername) {
@@ -246,6 +258,59 @@
       if (!byWorker || !byWorker[dateStr]) return [];
       return byWorker[dateStr];
     } catch { return []; }
+  }
+
+  const CABINET_START_HOUR = 8;
+  const CABINET_END_HOUR = 22;
+  const CABINET_HOURS = CABINET_END_HOUR - CABINET_START_HOUR;
+
+  function gridStateToIntervals(dayGrid) {
+    if (!dayGrid || !Array.isArray(dayGrid)) return [];
+    const intervals = [];
+    let start = null;
+    for (let i = 0; i < dayGrid.length; i++) {
+      if (dayGrid[i] === 1) {
+        if (start === null) start = CABINET_START_HOUR + i;
+      } else {
+        if (start !== null) {
+          intervals.push({ start: String(start).padStart(2, "0") + ":00", end: String(CABINET_START_HOUR + i).padStart(2, "0") + ":00" });
+          start = null;
+        }
+      }
+    }
+    if (start !== null) intervals.push({ start: String(start).padStart(2, "0") + ":00", end: String(CABINET_END_HOUR).padStart(2, "0") + ":00" });
+    return intervals;
+  }
+  function workingIntervalsToGrid(intervals) {
+    const grid = new Array(CABINET_HOURS).fill(0);
+    if (!intervals || !intervals.length) return grid;
+    intervals.forEach((seg) => {
+      const sh = timeToMinutes(seg.start) / 60;
+      const eh = timeToMinutes(seg.end) / 60;
+      for (let h = CABINET_START_HOUR; h < CABINET_END_HOUR; h++) {
+        if (h >= sh && h < eh) grid[h - CABINET_START_HOUR] = 1;
+      }
+    });
+    return grid;
+  }
+
+  function getWorkingHoursForDay(worker, dayNum) {
+    const defaultHours = [{ start: "09:00", end: "18:00" }];
+    const grid = worker.timetableGrid && worker.timetableGrid[dayNum];
+    if (grid && Array.isArray(grid)) {
+      const intervals = gridStateToIntervals(grid);
+      if (intervals.length) return intervals;
+    }
+    const byDay = worker.workingHoursByDay;
+    if (byDay && byDay[dayNum] && byDay[dayNum].length) return byDay[dayNum];
+    return (worker.workingHours && worker.workingHours.length) ? worker.workingHours : defaultHours;
+  }
+  function getCellStateFromGrid(worker, dayNum, hour) {
+    const grid = worker.timetableGrid && worker.timetableGrid[dayNum];
+    if (!grid || !Array.isArray(grid)) return 0;
+    const idx = hour - CABINET_START_HOUR;
+    if (idx < 0 || idx >= grid.length) return 0;
+    return grid[idx];
   }
 
   function timeToMinutes(t) {
@@ -353,12 +418,24 @@
         if (!w || w.role !== "worker") return;
         const card = document.createElement("div");
         card.className = "results-card";
+        const content = document.createElement("div");
+        content.className = "results-card-content";
+        if (w.avatar) {
+          const img = document.createElement("img");
+          img.className = "worker-avatar";
+          img.src = w.avatar;
+          img.alt = "";
+          content.appendChild(img);
+        }
+        const textBlock = document.createElement("div");
         const fullName = w.patronymic ? w.name + " " + w.patronymic : (w.name || "Без имени");
-        card.innerHTML = "<div class=\"results-card-name\">" + fullName + "</div><div class=\"results-card-spec\">" + (KIND_LABELS[w.kind] || "Специалист") + " — " + (w.specialty || "") + "</div>";
-        if (w.price) card.innerHTML += "<div class=\"card-price\">" + w.price + " ₽/час</div>";
+        textBlock.innerHTML = "<div class=\"results-card-name\">" + escapeHtml(fullName) + "</div><div class=\"results-card-spec\">" + (KIND_LABELS[w.kind] || "Специалист") + " — " + (w.specialty || "") + "</div>";
+        if (w.price) textBlock.innerHTML += "<div class=\"card-price\">" + w.price + " ₽/час</div>";
         const revCount = getReviewCount(username);
         const rating = getAverageRating(username);
-        if (rating || revCount) card.innerHTML += "<div class=\"card-rating\">" + (rating ? "★ " + rating : "") + (revCount ? (rating ? " · " : "") + revCount + " " + (revCount === 1 ? "отзыв" : revCount < 5 ? "отзыва" : "отзывов") : "") + "</div>";
+        if (rating || revCount) textBlock.innerHTML += "<div class=\"card-rating\">" + (rating ? "★ " + rating : "") + (revCount ? (rating ? " · " : "") + revCount + " " + (revCount === 1 ? "отзыв" : revCount < 5 ? "отзыва" : "отзывов") : "") + "</div>";
+        content.appendChild(textBlock);
+        card.appendChild(content);
         card.addEventListener("click", () => { profileFromResults = false; openProfile(username); });
         favoritesListEl.appendChild(card);
       });
@@ -402,66 +479,80 @@
     cabinetSpecialtySelect.value = w.specialty || "";
     if (cabinetTelegramInput) cabinetTelegramInput.value = w.telegram || "";
     if (cabinetEmailInput) cabinetEmailInput.value = w.email || "";
+    cabinetAvatarDataUrl = null;
+    if (cabinetAvatarPreview) {
+      cabinetAvatarPreview.src = w.avatar || "";
+      cabinetAvatarPreview.style.display = w.avatar ? "block" : "none";
+    }
+    if (cabinetAvatarInput) cabinetAvatarInput.value = "";
     const cabinetTimetableEl = document.getElementById("cabinet-timetable");
     if (cabinetTimetableEl) {
       const dayLabels = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
-      const defaultHours = [{ start: "09:00", end: "18:00" }];
-      function getWorkHoursForDay(worker, dayNum) {
-        const byDay = worker.workingHoursByDay;
-        if (byDay && byDay[dayNum] && byDay[dayNum].length) return byDay[dayNum];
-        return (worker.workingHours && worker.workingHours.length) ? worker.workingHours : defaultHours;
-      }
       cabinetTimetableEl.innerHTML = "";
+      const wrap = document.createElement("div");
+      wrap.className = "timetable-week-wrap cabinet-timetable-grid";
+      const headerRow = document.createElement("div");
+      headerRow.className = "timetable-week-header";
+      const timeLabel = document.createElement("div");
+      timeLabel.className = "timetable-week-time-label";
+      headerRow.appendChild(timeLabel);
       for (let dayNum = 0; dayNum <= 6; dayNum++) {
-        const segments = getWorkHoursForDay(w, dayNum);
-        const dayBlock = document.createElement("div");
-        dayBlock.className = "cabinet-timetable-day";
-        dayBlock.dataset.day = String(dayNum);
-        const title = document.createElement("div");
-        title.className = "cabinet-timetable-day-title";
-        title.textContent = dayLabels[dayNum];
-        dayBlock.appendChild(title);
-        const segmentsContainer = document.createElement("div");
-        segmentsContainer.className = "cabinet-timetable-segments";
-        function addSegmentRow(startVal, endVal) {
-          const row = document.createElement("div");
-          row.className = "cabinet-timetable-segment-row";
-          const startInput = document.createElement("input");
-          startInput.type = "text";
-          startInput.placeholder = "09:00";
-          startInput.value = startVal || "";
-          startInput.dataset.role = "start";
-          const endInput = document.createElement("input");
-          endInput.type = "text";
-          endInput.placeholder = "18:00";
-          endInput.value = endVal || "";
-          endInput.dataset.role = "end";
-          const removeBtn = document.createElement("button");
-          removeBtn.type = "button";
-          removeBtn.className = "cabinet-timetable-remove-btn";
-          removeBtn.textContent = "✕";
-          removeBtn.addEventListener("click", () => { row.remove(); });
-          row.appendChild(startInput);
-          row.appendChild(endInput);
-          row.appendChild(removeBtn);
-          segmentsContainer.appendChild(row);
-        }
-        segments.forEach((seg) => addSegmentRow(seg.start, seg.end));
-        const addBtn = document.createElement("button");
-        addBtn.type = "button";
-        addBtn.className = "cabinet-timetable-add-btn";
-        addBtn.textContent = "Добавить интервал";
-        addBtn.addEventListener("click", () => addSegmentRow("", ""));
-        dayBlock.appendChild(segmentsContainer);
-        dayBlock.appendChild(addBtn);
-        cabinetTimetableEl.appendChild(dayBlock);
+        const th = document.createElement("div");
+        th.className = "timetable-week-day-header";
+        th.textContent = dayLabels[dayNum];
+        headerRow.appendChild(th);
       }
+      wrap.appendChild(headerRow);
+      const gridState = {};
+      for (let dayNum = 0; dayNum <= 6; dayNum++) {
+        let dayGrid = w.timetableGrid && w.timetableGrid[dayNum];
+        if (!dayGrid || !Array.isArray(dayGrid) || dayGrid.length !== CABINET_HOURS) {
+          dayGrid = workingIntervalsToGrid(getWorkingHoursForDay(w, dayNum));
+        }
+        gridState[dayNum] = dayGrid.slice();
+      }
+      for (let hour = CABINET_START_HOUR; hour < CABINET_END_HOUR; hour++) {
+        const row = document.createElement("div");
+        row.className = "timetable-week-row";
+        const timeCell = document.createElement("div");
+        timeCell.className = "timetable-week-time";
+        timeCell.textContent = String(hour).padStart(2, "0") + ":00";
+        row.appendChild(timeCell);
+        for (let dayNum = 0; dayNum <= 6; dayNum++) {
+          const idx = hour - CABINET_START_HOUR;
+          const state = gridState[dayNum][idx];
+          const cell = document.createElement("div");
+          cell.className = "timetable-week-cell cabinet-timetable-cell";
+          cell.dataset.day = String(dayNum);
+          cell.dataset.hour = String(hour);
+          cell.dataset.state = String(state);
+          if (state === 1) cell.classList.add("working");
+          else if (state === 2) cell.classList.add("busy");
+          cell.title = "Серый: не работает, Зелёный: свободен, Красный: занят. Клик — смена.";
+          cell.addEventListener("click", () => {
+            const next = (parseInt(cell.dataset.state, 10) + 1) % 3;
+            cell.dataset.state = String(next);
+            gridState[dayNum][idx] = next;
+            cell.classList.remove("working", "busy");
+            if (next === 1) cell.classList.add("working");
+            else if (next === 2) cell.classList.add("busy");
+          });
+          row.appendChild(cell);
+        }
+        wrap.appendChild(row);
+      }
+      const legend = document.createElement("div");
+      legend.className = "timetable-legend";
+      legend.innerHTML = "<span><span class=\"dot\"></span> Не работает</span><span><span class=\"dot working\"></span> Свободен</span><span><span class=\"dot busy\"></span> Занят</span>";
+      wrap.appendChild(legend);
+      cabinetTimetableEl.appendChild(wrap);
     }
     cabinetReviewsEl.innerHTML = "";
     getReviews(username).forEach((r) => {
       const div = document.createElement("div");
       div.className = "review-item";
-      div.innerHTML = "<div class=\"review-author\">" + r.author + " · " + r.date + " · ★" + r.rating + "</div><div>" + getReviewLabel(r.rating) + "</div>";
+      const authorLabel = (r.authorUsername && r.authorUsername === currentUserUsername) ? "Вы" : (r.author || "Гость");
+      div.innerHTML = "<div class=\"review-author\">" + escapeHtml(authorLabel) + " · " + r.date + " · ★" + r.rating + "</div><div>" + (r.text && r.text.trim() ? escapeHtml(r.text) : getReviewLabel(r.rating)) + "</div>";
       cabinetReviewsEl.appendChild(div);
     });
   }
@@ -699,6 +790,16 @@
         const card = document.createElement("div");
         card.className = "results-card";
         card.dataset.username = w.username;
+        const content = document.createElement("div");
+        content.className = "results-card-content";
+        if (w.avatar) {
+          const img = document.createElement("img");
+          img.className = "worker-avatar";
+          img.src = w.avatar;
+          img.alt = "";
+          content.appendChild(img);
+        }
+        const textBlock = document.createElement("div");
         const fullName = w.patronymic ? `${w.name} ${w.patronymic}` : (w.name || "Без имени");
         const nameEl = document.createElement("div");
         nameEl.className = "results-card-name";
@@ -707,11 +808,13 @@
         specEl.className = "results-card-spec";
         const kindLabel = KIND_LABELS[w.kind] || "Специалист";
         specEl.textContent = `${kindLabel} — ${w.specialty}`;
-        card.appendChild(nameEl);
-        card.appendChild(specEl);
-        if (w.price) { const p = document.createElement("div"); p.className = "card-price"; p.textContent = (w.price + " ₽/час"); card.appendChild(p); }
+        textBlock.appendChild(nameEl);
+        textBlock.appendChild(specEl);
+        if (w.price) { const p = document.createElement("div"); p.className = "card-price"; p.textContent = (w.price + " ₽/час"); textBlock.appendChild(p); }
         const revCount = getReviewCount(w.username);
-        if (w.rating || revCount) { const r = document.createElement("div"); r.className = "card-rating"; r.textContent = (w.rating ? "★ " + w.rating : "") + (revCount ? (w.rating ? " · " : "") + revCount + " " + (revCount === 1 ? "отзыв" : revCount < 5 ? "отзыва" : "отзывов") : ""); card.appendChild(r); }
+        if (w.rating || revCount) { const r = document.createElement("div"); r.className = "card-rating"; r.textContent = (w.rating ? "★ " + w.rating : "") + (revCount ? (w.rating ? " · " : "") + revCount + " " + (revCount === 1 ? "отзыв" : revCount < 5 ? "отзыва" : "отзывов") : ""); textBlock.appendChild(r); }
+        content.appendChild(textBlock);
+        card.appendChild(content);
         card.addEventListener("click", () => { profileFromResults = true; openProfile(w.username); });
         resultsPageListEl.appendChild(card);
       });
@@ -734,6 +837,14 @@
     list.forEach((w) => {
       const card = document.createElement("div");
       card.className = "search-card";
+      if (w.avatar) {
+        const img = document.createElement("img");
+        img.className = "worker-avatar search-card-avatar";
+        img.src = w.avatar;
+        img.alt = "";
+        card.appendChild(img);
+      }
+      const textBlock = document.createElement("div");
       const fullName = w.patronymic ? `${w.name} ${w.patronymic}` : (w.name || "Без имени");
       const title = document.createElement("div");
       title.className = "search-card-title";
@@ -741,11 +852,12 @@
       const sub = document.createElement("div");
       sub.className = "search-card-sub";
       sub.textContent = (KIND_LABELS[w.kind] || "Специалист") + " — " + (w.specialty || "");
-      card.appendChild(title);
-      card.appendChild(sub);
-      if (w.price) { const p = document.createElement("div"); p.className = "card-price"; p.textContent = w.price + " ₽/час"; card.appendChild(p); }
+      textBlock.appendChild(title);
+      textBlock.appendChild(sub);
+      if (w.price) { const p = document.createElement("div"); p.className = "card-price"; p.textContent = w.price + " ₽/час"; textBlock.appendChild(p); }
       const revCount = getReviewCount(w.username);
-      if (w.rating || revCount) { const r = document.createElement("div"); r.className = "card-rating"; r.textContent = (w.rating ? "★ " + w.rating : "") + (revCount ? (w.rating ? " · " : "") + revCount + " " + (revCount === 1 ? "отзыв" : revCount < 5 ? "отзыва" : "отзывов") : ""); card.appendChild(r); }
+      if (w.rating || revCount) { const r = document.createElement("div"); r.className = "card-rating"; r.textContent = (w.rating ? "★ " + w.rating : "") + (revCount ? (w.rating ? " · " : "") + revCount + " " + (revCount === 1 ? "отзыв" : revCount < 5 ? "отзыва" : "отзывов") : ""); textBlock.appendChild(r); }
+      card.appendChild(textBlock);
       card.addEventListener("click", () => { profileFromResults = false; openProfile(w.username); });
       searchResultsEl.appendChild(card);
     });
@@ -754,8 +866,9 @@
   function openResultsPage() {
     lastSearchQuery = searchInput.value.trim();
     renderResultsList();
+    closeResultsDetail();
     searchPageEl.style.display = "none";
-    resultsPageEl.style.display = "block";
+    resultsPageEl.style.display = "flex";
   }
 
   function closeResultsPage() {
@@ -764,12 +877,165 @@
   }
 
   let profileFromResults = false;
+
+  function buildTimetableWrap(workerUsername) {
+    const w = users[workerUsername];
+    if (!w || w.role !== "worker") return document.createElement("div");
+    function slotOverlaps(slotStartMin, slotEndMin, segStart, segEnd) {
+      const s = timeToMinutes(segStart);
+      const e = timeToMinutes(segEnd);
+      return s < slotEndMin && e > slotStartMin;
+    }
+    const WEEKDAY_LABELS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+    const startHour = 8;
+    const endHour = 22;
+    const now = new Date();
+    const monOffset = (now.getDay() + 6) % 7;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - monOffset);
+    const weekDates = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      weekDates.push(d);
+    }
+    const wrap = document.createElement("div");
+    wrap.className = "timetable-week-wrap";
+    const headerRow = document.createElement("div");
+    headerRow.className = "timetable-week-header";
+    const timeLabel = document.createElement("div");
+    timeLabel.className = "timetable-week-time-label";
+    headerRow.appendChild(timeLabel);
+    weekDates.forEach((d) => {
+      const th = document.createElement("div");
+      th.className = "timetable-week-day-header";
+      th.textContent = WEEKDAY_LABELS[d.getDay()] + " " + d.getDate();
+      headerRow.appendChild(th);
+    });
+    wrap.appendChild(headerRow);
+    for (let hour = startHour; hour < endHour; hour++) {
+      const row = document.createElement("div");
+      row.className = "timetable-week-row";
+      const slotStartMin = hour * 60;
+      const slotEndMin = (hour + 1) * 60;
+      const timeCell = document.createElement("div");
+      timeCell.className = "timetable-week-time";
+      timeCell.textContent = String(hour).padStart(2, "0") + ":00";
+      row.appendChild(timeCell);
+      for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
+        const d = weekDates[dayIdx];
+        const dateStr = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+        const dayNum = d.getDay();
+        const workSegments = getWorkingHoursForDay(w, dayNum);
+        const busySlots = getBusySlots(workerUsername, dateStr);
+        let isWorking = workSegments.some((seg) => slotOverlaps(slotStartMin, slotEndMin, seg.start, seg.end));
+        const cellState = getCellStateFromGrid(w, dayNum, hour);
+        let isBusy = cellState === 2 || busySlots.some((seg) => slotOverlaps(slotStartMin, slotEndMin, seg.start, seg.end));
+        const cell = document.createElement("div");
+        cell.className = "timetable-week-cell";
+        if (isBusy) cell.classList.add("busy");
+        else if (isWorking) cell.classList.add("working");
+        row.appendChild(cell);
+      }
+      wrap.appendChild(row);
+    }
+    const legend = document.createElement("div");
+    legend.className = "timetable-legend";
+    legend.innerHTML = "<span><span class=\"dot working\"></span> Работает</span><span><span class=\"dot busy\"></span> Занято</span>";
+    wrap.appendChild(legend);
+    return wrap;
+  }
+
+  function renderResultsDetail(workerUsername) {
+    if (!resultsDetailContentEl) return;
+    const w = users[workerUsername];
+    if (!w || w.role !== "worker") return;
+    const fullName = w.patronymic ? w.name + " " + w.patronymic : (w.name || "Без имени");
+    const kindLabel = KIND_LABELS[w.kind] || "Специалист";
+    const contactParts = [];
+    if (w.telegram) {
+      const tg = String(w.telegram).trim();
+      const tgHref = tg.startsWith("http") ? tg : (tg.startsWith("@") ? "https://t.me/" + tg.slice(1) : "https://t.me/" + tg);
+      contactParts.push("Telegram: <a href=\"" + tgHref + "\" target=\"_blank\" rel=\"noopener\">" + escapeHtml(tg) + "</a>");
+    }
+    if (w.email) contactParts.push("Email: <a href=\"mailto:" + escapeHtml(w.email) + "\">" + escapeHtml(w.email) + "</a>");
+    let html = "";
+    if (w.avatar) html += "<div class=\"profile-header-inner\"><img class=\"profile-avatar\" src=\"" + escapeHtml(w.avatar) + "\" alt=\"\" /></div>";
+    html += "<div class=\"profile-name\">" + escapeHtml(fullName) + "</div>";
+    html += "<div class=\"profile-meta\">" + escapeHtml(kindLabel + " — " + (w.specialty || "") + (w.city ? " · " + w.city : "")) + "</div>";
+    html += "<div class=\"profile-price\">" + (w.price ? w.price + " ₽/час" : "Цена не указана") + "</div>";
+    html += "<div class=\"rating-stars\">" + escapeHtml(formatRatingAndCount(workerUsername)) + "</div>";
+    html += "<div class=\"profile-about\">" + escapeHtml(w.about || "Нет описания.") + "</div>";
+    html += "<div class=\"profile-contact\">" + (contactParts.length ? contactParts.join(" · ") : "Способ связи не указан.") + "</div>";
+    html += "<h4 style=\"margin-top:14px\">Расписание</h4>";
+    resultsDetailContentEl.innerHTML = html;
+    const timetableContainer = document.createElement("div");
+    timetableContainer.className = "profile-timetable";
+    timetableContainer.appendChild(buildTimetableWrap(workerUsername));
+    resultsDetailContentEl.appendChild(timetableContainer);
+    const favBtn = document.createElement("button");
+    favBtn.type = "button";
+    favBtn.className = "favorite-btn" + (isFavorite(workerUsername) ? " in-favorites" : "");
+    favBtn.textContent = isFavorite(workerUsername) ? "В избранном" : "В избранное";
+    favBtn.onclick = function() {
+      toggleFavorite(workerUsername);
+      favBtn.textContent = isFavorite(workerUsername) ? "В избранном" : "В избранное";
+      favBtn.classList.toggle("in-favorites", isFavorite(workerUsername));
+    };
+    resultsDetailContentEl.appendChild(favBtn);
+    const reviewsTitle = document.createElement("h4");
+    reviewsTitle.style.marginTop = "16px";
+    reviewsTitle.textContent = "Отзывы";
+    resultsDetailContentEl.appendChild(reviewsTitle);
+    const reviewsList = document.createElement("div");
+    reviewsList.className = "reviews-list";
+    getReviews(workerUsername).forEach((r) => {
+      const div = document.createElement("div");
+      div.className = "review-item";
+      const authorLabel = (r.authorUsername && r.authorUsername === currentUserUsername) ? "Вы" : (r.author || "Гость");
+      div.innerHTML = "<div class=\"review-author\">" + escapeHtml(authorLabel) + " · " + r.date + " · ★" + r.rating + "</div><div>" + (r.text && r.text.trim() ? escapeHtml(r.text) : getReviewLabel(r.rating)) + "</div>";
+      reviewsList.appendChild(div);
+    });
+    resultsDetailContentEl.appendChild(reviewsList);
+    const isUser = currentUserUsername && users[currentUserUsername] && users[currentUserUsername].role === "user";
+    const isSelf = currentUserUsername === workerUsername;
+    if (isUser && !isSelf) {
+      const reviewForm = document.createElement("div");
+      reviewForm.className = "review-form";
+      reviewForm.innerHTML = "<label>Ваша оценка (1–5):</label><input type=\"number\" min=\"1\" max=\"5\" value=\"5\" class=\"js-detail-review-rating\" /><textarea placeholder=\"Текст отзыва\" class=\"js-detail-review-text\"></textarea><button type=\"button\" class=\"js-detail-review-submit\">Отправить отзыв</button>";
+      const ratingInput = reviewForm.querySelector(".js-detail-review-rating");
+      const textInput = reviewForm.querySelector(".js-detail-review-text");
+      const submitBtn = reviewForm.querySelector(".js-detail-review-submit");
+      submitBtn.onclick = function() {
+        const rating = parseInt(ratingInput.value, 10);
+        if (rating < 1 || rating > 5) return;
+        saveReview(workerUsername, { rating, text: "" });
+        renderResultsDetail(workerUsername);
+      };
+      resultsDetailContentEl.appendChild(reviewForm);
+    }
+    resultsPageEl.classList.add("has-detail");
+  }
+
+  function closeResultsDetail() {
+    resultsPageEl.classList.remove("has-detail");
+    if (resultsDetailContentEl) resultsDetailContentEl.innerHTML = "";
+  }
+
   function openProfile(workerUsername) {
     currentProfileUsername = workerUsername;
     const w = users[workerUsername];
     if (!w || w.role !== "worker") return;
+    if (profileFromResults && resultsDetailContentEl) {
+      renderResultsDetail(workerUsername);
+      return;
+    }
     const fullName = w.patronymic ? `${w.name} ${w.patronymic}` : (w.name || "Без имени");
     const kindLabel = KIND_LABELS[w.kind] || "Специалист";
+    if (profileAvatarEl) {
+      profileAvatarEl.src = w.avatar || "";
+      profileAvatarEl.style.display = w.avatar ? "block" : "none";
+    }
     profileNameEl.textContent = fullName;
     profileMetaEl.textContent = `${kindLabel} — ${w.specialty}` + (w.city ? " · " + w.city : "");
     profilePriceEl.textContent = w.price ? w.price + " ₽/час" : "Цена не указана";
@@ -798,75 +1064,8 @@
 
     const profileTimetableEl = document.getElementById("profile-timetable");
     if (profileTimetableEl) {
-      const defaultHours = [{ start: "09:00", end: "18:00" }];
-      function getWorkingHoursForDay(worker, dayNum) {
-        const byDay = worker.workingHoursByDay;
-        if (byDay && byDay[dayNum] && byDay[dayNum].length) return byDay[dayNum];
-        return (worker.workingHours && worker.workingHours.length) ? worker.workingHours : defaultHours;
-      }
-      function slotOverlaps(slotStartMin, slotEndMin, segStart, segEnd) {
-        const s = timeToMinutes(segStart);
-        const e = timeToMinutes(segEnd);
-        return s < slotEndMin && e > slotStartMin;
-      }
-      const WEEKDAY_LABELS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
-      const startHour = 8;
-      const endHour = 22;
-      const now = new Date();
-      const monOffset = (now.getDay() + 6) % 7;
-      const monday = new Date(now);
-      monday.setDate(now.getDate() - monOffset);
-      const weekDates = [];
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        weekDates.push(d);
-      }
       profileTimetableEl.innerHTML = "";
-      const wrap = document.createElement("div");
-      wrap.className = "timetable-week-wrap";
-      const headerRow = document.createElement("div");
-      headerRow.className = "timetable-week-header";
-      const timeLabel = document.createElement("div");
-      timeLabel.className = "timetable-week-time-label";
-      headerRow.appendChild(timeLabel);
-      weekDates.forEach((d) => {
-        const th = document.createElement("div");
-        th.className = "timetable-week-day-header";
-        th.textContent = WEEKDAY_LABELS[d.getDay()] + " " + d.getDate();
-        headerRow.appendChild(th);
-      });
-      wrap.appendChild(headerRow);
-      for (let hour = startHour; hour < endHour; hour++) {
-        const row = document.createElement("div");
-        row.className = "timetable-week-row";
-        const slotStartMin = hour * 60;
-        const slotEndMin = (hour + 1) * 60;
-        const timeCell = document.createElement("div");
-        timeCell.className = "timetable-week-time";
-        timeCell.textContent = String(hour).padStart(2, "0") + ":00";
-        row.appendChild(timeCell);
-        for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
-          const d = weekDates[dayIdx];
-          const dateStr = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-          const dayNum = d.getDay();
-          const workSegments = getWorkingHoursForDay(w, dayNum);
-          const busySlots = getBusySlots(workerUsername, dateStr);
-          let isWorking = workSegments.some((seg) => slotOverlaps(slotStartMin, slotEndMin, seg.start, seg.end));
-          let isBusy = busySlots.some((seg) => slotOverlaps(slotStartMin, slotEndMin, seg.start, seg.end));
-          const cell = document.createElement("div");
-          cell.className = "timetable-week-cell";
-          if (isBusy) cell.classList.add("busy");
-          else if (isWorking) cell.classList.add("working");
-          row.appendChild(cell);
-        }
-        wrap.appendChild(row);
-      }
-      const legend = document.createElement("div");
-      legend.className = "timetable-legend";
-      legend.innerHTML = "<span><span class=\"dot working\"></span> Работает</span><span><span class=\"dot busy\"></span> Занято</span>";
-      wrap.appendChild(legend);
-      profileTimetableEl.appendChild(wrap);
+      profileTimetableEl.appendChild(buildTimetableWrap(workerUsername));
     }
 
     const reviews = getReviews(workerUsername);
@@ -874,7 +1073,8 @@
     reviews.forEach((r) => {
       const div = document.createElement("div");
       div.className = "review-item";
-      div.innerHTML = "<div class=\"review-author\">" + r.author + " · " + r.date + " · ★" + r.rating + "</div><div>" + getReviewLabel(r.rating) + "</div>";
+      const authorLabel = (r.authorUsername && r.authorUsername === currentUserUsername) ? "Вы" : (r.author || "Гость");
+      div.innerHTML = "<div class=\"review-author\">" + escapeHtml(authorLabel) + " · " + r.date + " · ★" + r.rating + "</div><div>" + (r.text && r.text.trim() ? escapeHtml(r.text) : getReviewLabel(r.rating)) + "</div>";
       profileReviewsEl.appendChild(div);
     });
     const isUser = currentUserUsername && users[currentUserUsername] && users[currentUserUsername].role === "user";
@@ -903,7 +1103,7 @@
   function closeProfile() {
     profilePageEl.classList.remove("visible");
     profilePageEl.style.display = "none";
-    if (profileFromResults) resultsPageEl.style.display = "block";
+    if (profileFromResults) resultsPageEl.style.display = "flex";
     else searchPageEl.style.display = "block";
   }
 
@@ -914,7 +1114,8 @@
   searchInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") openResultsPage();
   });
-  resultsBackBtn.addEventListener("click", closeResultsPage);
+  resultsBackBtn.addEventListener("click", () => { closeResultsDetail(); closeResultsPage(); });
+  if (resultsDetailCloseBtn) resultsDetailCloseBtn.addEventListener("click", closeResultsDetail);
   favoritesBackBtn.addEventListener("click", () => { hideAllPages(); searchPageEl.style.display = "block"; });
 
   cabinetKindSelect.addEventListener("change", () => {
@@ -926,6 +1127,21 @@
       cabinetSpecialtySelect.appendChild(opt);
     });
   });
+  if (cabinetAvatarInput) {
+    cabinetAvatarInput.addEventListener("change", function() {
+      const file = this.files && this.files[0];
+      if (!file) return;
+      const fr = new FileReader();
+      fr.onload = function() {
+        cabinetAvatarDataUrl = fr.result;
+        if (cabinetAvatarPreview) {
+          cabinetAvatarPreview.src = cabinetAvatarDataUrl;
+          cabinetAvatarPreview.style.display = "block";
+        }
+      };
+      fr.readAsDataURL(file);
+    });
+  }
   cabinetSaveBtn.addEventListener("click", () => {
     if (!currentUserUsername) return;
     const w = users[currentUserUsername];
@@ -939,23 +1155,29 @@
     w.specialty = cabinetSpecialtySelect.value;
     w.telegram = cabinetTelegramInput ? cabinetTelegramInput.value.trim() : "";
     w.email = cabinetEmailInput ? cabinetEmailInput.value.trim() : "";
+    if (cabinetAvatarDataUrl) w.avatar = cabinetAvatarDataUrl;
     const cabinetTimetableEl = document.getElementById("cabinet-timetable");
+    const overrides = {};
+    if (cabinetAvatarDataUrl) overrides.avatar = w.avatar;
     if (cabinetTimetableEl) {
-      w.workingHoursByDay = {};
-      cabinetTimetableEl.querySelectorAll(".cabinet-timetable-day").forEach((dayBlock) => {
-        const dayNum = parseInt(dayBlock.dataset.day, 10);
-        const segments = [];
-        dayBlock.querySelectorAll(".cabinet-timetable-segment-row").forEach((row) => {
-          const startInput = row.querySelector("input[data-role=start]");
-          const endInput = row.querySelector("input[data-role=end]");
-          const start = (startInput && startInput.value.trim()) || "";
-          const end = (endInput && endInput.value.trim()) || "";
-          if (start && end) segments.push({ start, end });
-        });
-        w.workingHoursByDay[dayNum] = segments;
+      const timetableGrid = {};
+      for (let dayNum = 0; dayNum <= 6; dayNum++) timetableGrid[dayNum] = new Array(CABINET_HOURS).fill(0);
+      cabinetTimetableEl.querySelectorAll(".cabinet-timetable-cell").forEach((cell) => {
+        const dayNum = parseInt(cell.dataset.day, 10);
+        const hour = parseInt(cell.dataset.hour, 10);
+        const state = parseInt(cell.dataset.state, 10);
+        const idx = hour - CABINET_START_HOUR;
+        if (dayNum >= 0 && dayNum <= 6 && idx >= 0 && idx < CABINET_HOURS) timetableGrid[dayNum][idx] = state;
       });
-      saveWorkerOverride(currentUserUsername, { workingHoursByDay: w.workingHoursByDay });
+      w.timetableGrid = timetableGrid;
+      w.workingHoursByDay = {};
+      for (let dayNum = 0; dayNum <= 6; dayNum++) {
+        w.workingHoursByDay[dayNum] = gridStateToIntervals(timetableGrid[dayNum]);
+      }
+      overrides.timetableGrid = w.timetableGrid;
+      overrides.workingHoursByDay = w.workingHoursByDay;
     }
+    if (Object.keys(overrides).length) saveWorkerOverride(currentUserUsername, overrides);
     if (!Object.prototype.hasOwnProperty.call(BASE_USERS, currentUserUsername)) {
       const extraUsers = { ...users };
       Object.keys(BASE_USERS).forEach((k) => delete extraUsers[k]);
@@ -970,7 +1192,7 @@
   });
 
   [filterKind, filterCity, filterPriceMin, filterPriceMax, sortBy].forEach((el) => {
-    if (el) el.addEventListener("change", () => { if (resultsPageEl.style.display === "block") renderResultsList(); });
-    if (el && el.tagName === "INPUT") el.addEventListener("input", () => { if (resultsPageEl.style.display === "block") renderResultsList(); });
+    if (el) el.addEventListener("change", () => { if (resultsPageEl.style.display !== "none") renderResultsList(); });
+    if (el && el.tagName === "INPUT") el.addEventListener("input", () => { if (resultsPageEl.style.display !== "none") renderResultsList(); });
   });
 })();
