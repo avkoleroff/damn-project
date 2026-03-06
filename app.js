@@ -262,33 +262,51 @@
 
   const CABINET_START_HOUR = 8;
   const CABINET_END_HOUR = 22;
-  const CABINET_HOURS = CABINET_END_HOUR - CABINET_START_HOUR;
+  const CABINET_SLOT_MINUTES = 30;
+  const CABINET_NUM_SLOTS = ((CABINET_END_HOUR - CABINET_START_HOUR) * 60) / CABINET_SLOT_MINUTES; // 28
+
+  function slotIndexToMinutes(slotIndex) {
+    return CABINET_START_HOUR * 60 + slotIndex * CABINET_SLOT_MINUTES;
+  }
+  function slotIndexToTimeStr(slotIndex) {
+    const min = slotIndexToMinutes(slotIndex);
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+  }
 
   function gridStateToIntervals(dayGrid) {
     if (!dayGrid || !Array.isArray(dayGrid)) return [];
+    let grid = dayGrid;
+    if (grid.length === 14) {
+      grid = [];
+      for (let i = 0; i < 14; i++) { grid.push(dayGrid[i]); grid.push(dayGrid[i]); }
+    }
     const intervals = [];
     let start = null;
-    for (let i = 0; i < dayGrid.length; i++) {
-      if (dayGrid[i] === 1) {
-        if (start === null) start = CABINET_START_HOUR + i;
+    for (let i = 0; i < grid.length; i++) {
+      if (grid[i] === 1) {
+        if (start === null) start = i;
       } else {
         if (start !== null) {
-          intervals.push({ start: String(start).padStart(2, "0") + ":00", end: String(CABINET_START_HOUR + i).padStart(2, "0") + ":00" });
+          intervals.push({ start: slotIndexToTimeStr(start), end: slotIndexToTimeStr(i) });
           start = null;
         }
       }
     }
-    if (start !== null) intervals.push({ start: String(start).padStart(2, "0") + ":00", end: String(CABINET_END_HOUR).padStart(2, "0") + ":00" });
+    if (start !== null) intervals.push({ start: slotIndexToTimeStr(start), end: slotIndexToTimeStr(grid.length) });
     return intervals;
   }
   function workingIntervalsToGrid(intervals) {
-    const grid = new Array(CABINET_HOURS).fill(0);
+    const grid = new Array(CABINET_NUM_SLOTS).fill(0);
     if (!intervals || !intervals.length) return grid;
     intervals.forEach((seg) => {
-      const sh = timeToMinutes(seg.start) / 60;
-      const eh = timeToMinutes(seg.end) / 60;
-      for (let h = CABINET_START_HOUR; h < CABINET_END_HOUR; h++) {
-        if (h >= sh && h < eh) grid[h - CABINET_START_HOUR] = 1;
+      const segStart = timeToMinutes(seg.start);
+      const segEnd = timeToMinutes(seg.end);
+      for (let i = 0; i < CABINET_NUM_SLOTS; i++) {
+        const slotStart = slotIndexToMinutes(i);
+        const slotEnd = slotIndexToMinutes(i + 1);
+        if (segStart < slotEnd && segEnd > slotStart) grid[i] = 1;
       }
     });
     return grid;
@@ -304,12 +322,12 @@
     if (byDay && byDay[dayNum] && byDay[dayNum].length) return byDay[dayNum];
     return (worker.workingHours && worker.workingHours.length) ? worker.workingHours : defaultHours;
   }
-  function getCellStateFromGrid(worker, dayNum, hour) {
+  function getCellStateFromGrid(worker, dayNum, slotIndex) {
     const grid = worker.timetableGrid && worker.timetableGrid[dayNum];
     if (!grid || !Array.isArray(grid)) return 0;
-    const idx = hour - CABINET_START_HOUR;
-    if (idx < 0 || idx >= grid.length) return 0;
-    return grid[idx];
+    if (grid.length === 14) return grid[Math.floor(slotIndex / 2)] || 0;
+    if (slotIndex < 0 || slotIndex >= grid.length) return 0;
+    return grid[slotIndex];
   }
 
   function timeToMinutes(t) {
@@ -553,26 +571,32 @@
       const gridState = {};
       for (let dayNum = 0; dayNum <= 6; dayNum++) {
         let dayGrid = w.timetableGrid && w.timetableGrid[dayNum];
-        if (!dayGrid || !Array.isArray(dayGrid) || dayGrid.length !== CABINET_HOURS) {
-          dayGrid = workingIntervalsToGrid(getWorkingHoursForDay(w, dayNum));
+        if (!dayGrid || !Array.isArray(dayGrid) || dayGrid.length !== CABINET_NUM_SLOTS) {
+          if (dayGrid && dayGrid.length === 14) {
+            const expanded = [];
+            for (let i = 0; i < 14; i++) { expanded.push(dayGrid[i]); expanded.push(dayGrid[i]); }
+            dayGrid = expanded;
+          }
+          if (!dayGrid || dayGrid.length !== CABINET_NUM_SLOTS) {
+            dayGrid = workingIntervalsToGrid(getWorkingHoursForDay(w, dayNum));
+          }
         }
         gridState[dayNum] = dayGrid.slice();
       }
-      for (let hour = CABINET_START_HOUR; hour < CABINET_END_HOUR; hour++) {
+      for (let slotIndex = 0; slotIndex < CABINET_NUM_SLOTS; slotIndex++) {
         const row = document.createElement("div");
         row.className = "timetable-week-row";
         const timeCell = document.createElement("div");
         timeCell.className = "timetable-week-time";
-        timeCell.textContent = String(hour).padStart(2, "0") + ":00";
+        timeCell.textContent = slotIndexToTimeStr(slotIndex);
         row.appendChild(timeCell);
         for (let col = 0; col < dayOrder.length; col++) {
           const dayNum = dayOrder[col];
-          const idx = hour - CABINET_START_HOUR;
-          const state = gridState[dayNum][idx];
+          const state = gridState[dayNum][slotIndex];
           const cell = document.createElement("div");
           cell.className = "timetable-week-cell cabinet-timetable-cell";
           cell.dataset.day = String(dayNum);
-          cell.dataset.hour = String(hour);
+          cell.dataset.slot = String(slotIndex);
           cell.dataset.state = String(state);
           if (state === 1) cell.classList.add("working");
           else if (state === 2) cell.classList.add("busy");
@@ -580,7 +604,7 @@
           cell.addEventListener("click", () => {
             const next = (parseInt(cell.dataset.state, 10) + 1) % 3;
             cell.dataset.state = String(next);
-            gridState[dayNum][idx] = next;
+            gridState[dayNum][slotIndex] = next;
             cell.classList.remove("working", "busy");
             if (next === 1) cell.classList.add("working");
             else if (next === 2) cell.classList.add("busy");
@@ -983,21 +1007,22 @@
       headerRow.appendChild(th);
     });
     wrap.appendChild(headerRow);
-    for (let hour = startHour; hour < endHour; hour++) {
+    const numSlots = ((endHour - startHour) * 60) / CABINET_SLOT_MINUTES;
+    for (let slotIndex = 0; slotIndex < numSlots; slotIndex++) {
+      const slotStartMin = slotIndexToMinutes(slotIndex);
+      const slotEndMin = slotIndexToMinutes(slotIndex + 1);
       const row = document.createElement("div");
       row.className = "timetable-week-row";
-      const slotStartMin = hour * 60;
-      const slotEndMin = (hour + 1) * 60;
       const timeCell = document.createElement("div");
       timeCell.className = "timetable-week-time";
-      timeCell.textContent = String(hour).padStart(2, "0") + ":00";
+      timeCell.textContent = slotIndexToTimeStr(slotIndex);
       row.appendChild(timeCell);
       for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
         const d = weekDates[dayIdx];
         const dayNum = d.getDay();
         const hasGrid = w.timetableGrid && w.timetableGrid[dayNum] && Array.isArray(w.timetableGrid[dayNum]);
         const workSegments = getWorkingHoursForDay(w, dayNum);
-        const cellState = getCellStateFromGrid(w, dayNum, hour);
+        const cellState = getCellStateFromGrid(w, dayNum, slotIndex);
         let isWorking, isBusy;
         if (hasGrid) {
           isBusy = cellState === 2;
@@ -1236,13 +1261,12 @@
     if (cabinetAvatarDataUrl) overrides.avatar = w.avatar;
     if (cabinetTimetableEl) {
       const timetableGrid = {};
-      for (let dayNum = 0; dayNum <= 6; dayNum++) timetableGrid[dayNum] = new Array(CABINET_HOURS).fill(0);
+      for (let dayNum = 0; dayNum <= 6; dayNum++) timetableGrid[dayNum] = new Array(CABINET_NUM_SLOTS).fill(0);
       cabinetTimetableEl.querySelectorAll(".cabinet-timetable-cell").forEach((cell) => {
         const dayNum = parseInt(cell.dataset.day, 10);
-        const hour = parseInt(cell.dataset.hour, 10);
+        const slotIndex = parseInt(cell.dataset.slot, 10);
         const state = parseInt(cell.dataset.state, 10);
-        const idx = hour - CABINET_START_HOUR;
-        if (dayNum >= 0 && dayNum <= 6 && idx >= 0 && idx < CABINET_HOURS) timetableGrid[dayNum][idx] = state;
+        if (dayNum >= 0 && dayNum <= 6 && slotIndex >= 0 && slotIndex < CABINET_NUM_SLOTS) timetableGrid[dayNum][slotIndex] = state;
       });
       w.timetableGrid = timetableGrid;
       w.workingHoursByDay = {};
