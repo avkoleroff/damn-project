@@ -132,6 +132,41 @@ button:active {
     0 24px 80px rgba(15, 23, 42, 0.9),
     0 0 0 1px rgba(148, 163, 184, 0.15);
 }
+
+.filter-time-wrap {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.45);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+}
+.filter-time-title {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin-bottom: 8px;
+}
+.filter-time-grid {
+  display: grid;
+  gap: 8px;
+}
+.filter-time-row {
+  display: grid;
+  grid-template-columns: 64px 1fr 1fr 140px;
+  gap: 8px;
+  align-items: center;
+}
+.filter-time-day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 0.85rem;
+  color: #e5e7eb;
+}
+.filter-time-row input[type="time"],
+.filter-time-row select {
+  width: 100%;
+}
 .logout-btn {
   position: fixed;
   top: 16px;
@@ -399,7 +434,6 @@ button:active {
 .card-price { color: #7dd3fc; font-size: 0.9rem; margin-top: 4px; }
 .card-rating { color: #fbbf24; font-size: 0.85rem; }
 
-/* Timetable — недельная сетка как в Google Calendar */
 .profile-timetable { margin: 12px 0 20px; overflow-x: auto; }
 .timetable-week-wrap { min-width: 320px; font-size: 0.8rem; }
 .timetable-week-header { display: grid; grid-template-columns: 44px repeat(7, 1fr); gap: 2px; margin-bottom: 4px; }
@@ -416,7 +450,6 @@ button:active {
 .timetable-legend .dot.working { background: #22c55e; }
 .timetable-legend .dot.busy { background: #ef4444; }
 
-/* Cabinet timetable editor — сетка как в профиле, клик по ячейке */
 .cabinet-timetable { margin-top: 8px; }
 .cabinet-timetable-grid .timetable-week-cell.cabinet-timetable-cell {
   cursor: pointer;

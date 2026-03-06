@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Айзек ви лав ю</title>
+  <title>OnlineBook</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -70,6 +70,74 @@
             <option value="priceDesc">Сначала дороже</option>
             <option value="name">По имени</option>
           </select>
+        </div>
+      </div>
+      <div class="filter-time-wrap" aria-label="Фильтр по времени">
+        <div class="filter-time-title">Время по дням</div>
+        <div class="filter-time-grid">
+          <div class="filter-time-row">
+            <label class="filter-time-day"><input id="filter-time-enable-1" type="checkbox" /> Пн</label>
+            <input id="filter-time-start-1" type="time" value="08:00" />
+            <input id="filter-time-end-1" type="time" value="22:00" />
+            <select id="filter-time-mode-1">
+              <option value="strict">Строгий</option>
+              <option value="nonstrict">Нестрогий</option>
+            </select>
+          </div>
+          <div class="filter-time-row">
+            <label class="filter-time-day"><input id="filter-time-enable-2" type="checkbox" /> Вт</label>
+            <input id="filter-time-start-2" type="time" value="08:00" />
+            <input id="filter-time-end-2" type="time" value="22:00" />
+            <select id="filter-time-mode-2">
+              <option value="strict">Строгий</option>
+              <option value="nonstrict">Нестрогий</option>
+            </select>
+          </div>
+          <div class="filter-time-row">
+            <label class="filter-time-day"><input id="filter-time-enable-3" type="checkbox" /> Ср</label>
+            <input id="filter-time-start-3" type="time" value="08:00" />
+            <input id="filter-time-end-3" type="time" value="22:00" />
+            <select id="filter-time-mode-3">
+              <option value="strict">Строгий</option>
+              <option value="nonstrict">Нестрогий</option>
+            </select>
+          </div>
+          <div class="filter-time-row">
+            <label class="filter-time-day"><input id="filter-time-enable-4" type="checkbox" /> Чт</label>
+            <input id="filter-time-start-4" type="time" value="08:00" />
+            <input id="filter-time-end-4" type="time" value="22:00" />
+            <select id="filter-time-mode-4">
+              <option value="strict">Строгий</option>
+              <option value="nonstrict">Нестрогий</option>
+            </select>
+          </div>
+          <div class="filter-time-row">
+            <label class="filter-time-day"><input id="filter-time-enable-5" type="checkbox" /> Пт</label>
+            <input id="filter-time-start-5" type="time" value="08:00" />
+            <input id="filter-time-end-5" type="time" value="22:00" />
+            <select id="filter-time-mode-5">
+              <option value="strict">Строгий</option>
+              <option value="nonstrict">Нестрогий</option>
+            </select>
+          </div>
+          <div class="filter-time-row">
+            <label class="filter-time-day"><input id="filter-time-enable-6" type="checkbox" /> Сб</label>
+            <input id="filter-time-start-6" type="time" value="08:00" />
+            <input id="filter-time-end-6" type="time" value="22:00" />
+            <select id="filter-time-mode-6">
+              <option value="strict">Строгий</option>
+              <option value="nonstrict">Нестрогий</option>
+            </select>
+          </div>
+          <div class="filter-time-row">
+            <label class="filter-time-day"><input id="filter-time-enable-0" type="checkbox" /> Вс</label>
+            <input id="filter-time-start-0" type="time" value="08:00" />
+            <input id="filter-time-end-0" type="time" value="22:00" />
+            <select id="filter-time-mode-0">
+              <option value="strict">Строгий</option>
+              <option value="nonstrict">Нестрогий</option>
+            </select>
+          </div>
         </div>
       </div>
       <div id="results-page-list" class="results-page-list"></div>
@@ -253,7 +321,7 @@
     </div>
   </div>
 
-  <script src="js/data.js"></script>
-  <script src="js/app.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
